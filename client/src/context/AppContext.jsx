@@ -12,6 +12,8 @@ export const AppContextProvider = (props) => {
 
 	const [allCourses, setAllCourses] = useState([])
 	const [isEducator, setIsEducator] = useState(true)
+	const [enrolledCourses, setIsEnrolledCourses] = useState([])
+
 	 // Assuming the user is an educator for demonstration purposes. In a real application, this would be determined by the user's role or permissions.
 
 	//Fetch all courses 
@@ -63,12 +65,18 @@ export const AppContextProvider = (props) => {
 		return totalLectures;
 	}
 
+	//Fetch User Enrolled Courses
+	const fetchUserEnrolledCourses = async ()=>{
+		setIsEnrolledCourses(dummyCourses)
+	}
+
 	useEffect(() => {
 		fetchAllCourses()
+		fetchUserEnrolledCourses()
 	}, [])
 
 	const value = {
-		currency, allCourses, navigate, calculateRating, isEducator, setIsEducator,calculateNoOfLectures, calculateCourseDuration, calculateChapterTime
+		currency, allCourses, navigate, calculateRating, isEducator, setIsEducator,calculateNoOfLectures, calculateCourseDuration, calculateChapterTime, enrolledCourses, fetchUserEnrolledCourses
     }
 
 	return (
