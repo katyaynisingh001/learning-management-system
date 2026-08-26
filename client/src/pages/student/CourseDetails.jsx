@@ -24,7 +24,7 @@ const CourseDetails = () => {
 
   useEffect(() => {
     fetchCourseData()
-  }, [id, allCourses])
+  }, [allCourses])
 
   const toggleSection = (index) => {
     setOpenSections((prev) => (
