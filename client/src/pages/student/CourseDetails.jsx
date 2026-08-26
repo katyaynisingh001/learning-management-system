@@ -2,8 +2,10 @@ import React, { useContext, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppContext } from '../../context/AppContext'
 import Loading from '../../components/student/Loading'
+import Footer from '../../components/student/Footer'
 import { assets } from '../../assets/assets'
 import humanizeDuration from 'humanize-duration'
+
 
 const CourseDetails = () => {
   const { id } = useParams()
@@ -154,9 +156,12 @@ const CourseDetails = () => {
               <li>Certificate of completion.</li>
             </ul>
           </div>
+
         </div>
       </div>
+
       </div>
+      <Footer/>
     </>
   ) : <Loading />
 }
