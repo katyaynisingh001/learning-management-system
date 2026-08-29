@@ -49,8 +49,8 @@ const Navbar = () => {
         </div>
         {
           user ? <UserButton />
-          : <button onClick={()=> openSignIn()}><img src="{assets.user_icon}" alt="" /></button>
-        }   
+          : <button onClick={()=> openSignIn()}><img src={assets.user_icon} alt="user" /></button>
+        }
       </div>
 
       <button className='rounded-full bg-blue-600 px-4 py-2 text-sm font-medium text-white md:hidden'>Menu</button>
