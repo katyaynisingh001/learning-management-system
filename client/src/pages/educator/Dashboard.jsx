@@ -9,11 +9,24 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState(null)
 
   const fetchDashboardData = async () => {
-    setDashboardData(dummyDashboardData)
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+      const response = await fetch(`${apiUrl}/api/users/count`)
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch user count')
+      }
+
+      const { totalUsers } = await response.json()
+      setDashboardData({ ...dummyDashboardData, totalUsers })
+    } catch (error) {
+      console.error('Dashboard data error:', error)
+      setDashboardData({ ...dummyDashboardData, totalUsers: 0 })
+    }
   }
 
   useEffect(() => {
-    setDashboardData(dummyDashboardData)
+    fetchDashboardData()
   }, [])
 
   return dashboardData ? (
@@ -23,8 +36,8 @@ const Dashboard = () => {
           <div className='flex flex-center gap-3 shadow-card border border-blue-500 p-4 w-56 rounded-md'>
             <img src={assets.patients_icon} alt="patients_icon" />
           <div>
-            <p className='text-2xl font-medium text-gray-600'>{dashboardData.enrolledStudentsData.length}</p>
-            <p className='text-base text-gray-500'>Total Enrolments</p>
+            <p className='text-2xl font-medium text-gray-600'>{dashboardData.totalUsers}</p>
+            <p className='text-base text-gray-500'>Total Users</p>
           </div>
           </div>
           <div className='flex flex-center gap-3 shadow-card border border-blue-500 p-4 w-56 rounded-md'>
