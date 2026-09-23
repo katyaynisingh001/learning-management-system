@@ -7,16 +7,21 @@ import { ClerkProvider } from '@clerk/clerk-react'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
+console.log("Clerk key:", PUBLISHABLE_KEY)
+
 if (!PUBLISHABLE_KEY) {
   throw new Error('Missing Publishable Key')
 }
 
 createRoot(document.getElementById('root')).render(
   <BrowserRouter>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignInUrl='/'>
-       <AppContextProvider>
-          <App />
-       </AppContextProvider>
+    <ClerkProvider
+      publishableKey={PUBLISHABLE_KEY}
+      fallbackRedirectUrl="/"
+    >
+      <AppContextProvider>
+        <App />
+      </AppContextProvider>
     </ClerkProvider>
-  </BrowserRouter>,
+  </BrowserRouter>
 )
