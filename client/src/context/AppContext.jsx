@@ -11,7 +11,7 @@ export const AppContextProvider = (props) => {
 	const currency = import.meta.env.VITE_CURRENCY 
 	const navigate = useNavigate()
 
-	const {getToken} = useAuth()
+	const {getToken, isLoaded, isSignedIn} = useAuth()
 	const {user} = useUser()
 
 	const [allCourses, setAllCourses] = useState([])
@@ -79,15 +79,25 @@ export const AppContextProvider = (props) => {
 		fetchUserEnrolledCourses()
 	}, [])
 
-	const logToken = async () => {
-		console.log(await getToken())
-	}
-
 	useEffect(() => {
-		if(user){
-			logToken()
+		if (!isLoaded) return
+
+		if (!isSignedIn) {
+			console.log('No Clerk token: user is not signed in')
+			return
 		}
-	}, [user])
+
+		const logToken = async () => {
+			try {
+				const token = await getToken()
+				console.log('Clerk token:', token)
+			} catch (error) {
+				console.error('Unable to get Clerk token:', error)
+			}
+		}
+
+		logToken()
+	}, [getToken, isLoaded, isSignedIn])
 
 
 	const value = {
