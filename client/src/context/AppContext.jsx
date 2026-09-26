@@ -90,9 +90,16 @@ export const AppContextProvider = (props) => {
 		const logToken = async () => {
 			try {
 				const token = await getToken()
-				console.log('Clerk token:', token)
+				const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/user/sync`, {
+					method: 'POST',
+					headers: { Authorization: `Bearer ${token}` },
+				})
+				const result = await response.json()
+				if (!response.ok || !result.success) {
+					throw new Error(result.message || 'Unable to sync user with the server.')
+				}
 			} catch (error) {
-				console.error('Unable to get Clerk token:', error)
+				console.error('Unable to sync user with the server:', error)
 			}
 		}
 

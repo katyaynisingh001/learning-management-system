@@ -2,8 +2,10 @@ import React, { useRef, useState, useEffect } from 'react'
 import uniqid from 'uniqid'
 import Quill from 'quill'
 import { assets } from '../../assets/assets';
+import { useAuth } from '@clerk/clerk-react'
 
 const AddCourse = () => {
+  const { getToken } = useAuth()
 
   const quillRef = useRef(null);
   const editorRef = useRef(null);
@@ -14,6 +16,8 @@ const AddCourse = () => {
   const [image, setImage] = useState(null)
   const [chapters, setChapters] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitMessage, setSubmitMessage] = useState('')
   const [currentChapterId, setCurrentChapterId] = useState(null);
 
   const [lectureDetails, setLectureDetails] = useState(
@@ -76,7 +80,7 @@ const addLecture = () => {
       return chapter;
     })
   );
-  showPopup(false);
+  setShowPopup(false);
   setLectureDetails({
     lectureTitle: '',
     lectureDuration: '',
@@ -85,8 +89,53 @@ const addLecture = () => {
   });
 };
 
-const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
+  setSubmitMessage('')
+  setIsSubmitting(true)
+
+  try {
+    const token = await getToken()
+    const courseData = {
+      courseTitle,
+      courseDescription: quillRef.current?.root.innerHTML ?? '',
+      coursePrice: Number(coursePrice),
+      discount: Number(discount),
+      courseContent: chapters.map((chapter) => ({
+        chapterID: chapter.chapterId,
+        chapterOrder: Number(chapter.chapterOrder),
+        chapterTitle: chapter.chapterTitle,
+        chapterContent: chapter.chapterContent.map((lecture) => ({
+          lectureID: lecture.lectureId,
+          lectureTitle: lecture.lectureTitle,
+          lectureDuration: Number(lecture.lectureDuration),
+          lectureUrl: lecture.lectureUrl,
+          isPreviewFree: lecture.isPreviewFree,
+          lectureOrder: Number(lecture.lectureOrder),
+        })),
+      })),
+    }
+    const formData = new FormData()
+    formData.append('courseData', JSON.stringify(courseData))
+    formData.append('image', image)
+
+    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/educator/add-course`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
+    const result = await response.json()
+
+    if (!response.ok || !result.success) {
+      throw new Error(result.message || 'Unable to add course.')
+    }
+
+    setSubmitMessage('Course added successfully.')
+  } catch (error) {
+    setSubmitMessage(error.message || 'Unable to add course.')
+  } finally {
+    setIsSubmitting(false)
+  }
 };
 
   useEffect(() => {
@@ -221,7 +270,10 @@ const handleSubmit = (e) => {
             )}
           </div>
 
-          <button type='submit' className='bg-black text-white w-max py-2.5 px-8 rounded my-4'>ADD</button>
+          <button type='submit' disabled={isSubmitting} className='bg-black text-white w-max py-2.5 px-8 rounded my-4 disabled:opacity-60'>
+            {isSubmitting ? 'ADDING...' : 'ADD'}
+          </button>
+          {submitMessage && <p role='status'>{submitMessage}</p>}
         </div>
       </form>
     </div>
