@@ -1,8 +1,9 @@
 import express from 'express'
-import { syncUser } from '../controllers/userController.js'
+import { getUserData, userEnrolledCourses } from '../controllers/userController.js'
 
 const userRouter = express.Router()
 
-userRouter.post('/sync', syncUser)
+userRouter.get('/data', getUserData)
+userRouter.get('/enrolled-courses', userEnrolledCourses)
 
-export default userRouter
+export default userRouter;

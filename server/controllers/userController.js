@@ -1,37 +1,28 @@
-import { clerkClient, getAuth } from '@clerk/express'
 import User from '../models/User.js'
 
-export const syncUser = async (req, res) => {
-    const { userId } = getAuth(req)
-
-    if (!userId) {
-        return res.status(401).json({ success: false, message: 'You must be signed in.' })
-    }
-
+//get user data
+export const getUserData = async (req, res) => {
     try {
-        const clerkUser = await clerkClient.users.getUser(userId)
-        const email = clerkUser.emailAddresses.find(
-            ({ id }) => id === clerkUser.primaryEmailAddressId
-        )?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress
+        const userId = req.auth.userId
+        const user = await User.findById(userId)
 
-        if (!email) {
-            return res.status(400).json({ success: false, message: 'Your account needs an email address.' })
+        if(!user){
+            return res.json({success: false, message: "User not Found"})
         }
+        res.json({success:true, user})
+    }catch(error){
+        req.json({success:false, message: error.message})
+    }
+}
 
-        const user = await User.findOneAndUpdate(
-            { _id: userId },
-            {
-                $set: {
-                    name: [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || email,
-                    email,
-                    imageUrl: clerkUser.imageUrl || '',
-                },
-            },
-            { upsert: true, new: true, runValidators: true }
-        )
+//Users Enrolled Courses With Lecture links
+export const userEnrolledCourses = async(req, res) =>{
+    try {
+        const userId = req.auth.userId
+        const userData = await User.findById(userId).populate('enrolledCourses')
 
-        return res.json({ success: true, user })
+        res.json({success: true, enrolledCourses: userData.enrolledCourses})
     } catch (error) {
-        return res.status(500).json({ success: false, message: error.message })
+        res.json({success:false, message:error.message})
     }
 }
