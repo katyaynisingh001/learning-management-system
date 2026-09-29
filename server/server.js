@@ -27,9 +27,4 @@ app.use('/api/user', express.json(), userRouter)
 app.use('/api/educator', express.json(), educatorRouter)
 app.use('/api/course', express.json(), courseRouter)
 
-// Port
-const PORT = process.env.PORT || 5000
-
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`)
-})
+export default app
