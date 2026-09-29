@@ -7,12 +7,16 @@ export const clerkWebhook = async (req, res) => {
     let event
 
     try {
+        if (!req.body || !Buffer.isBuffer(req.body)) {
+            return res.status(400).json({ success: false, message: 'Missing raw webhook payload.' })
+        }
+
         const whook = new Webhook(process.env.CLERK_WEBHOOK_SECRET);
 
         event = whook.verify(req.body, {
-            "svix-id" : req.headers["svix-id"],
-            "svix-timestamp" : req.headers["svix-timestamp"],
-            "svix-signature" : req.headers["svix-signature"]
+            "svix-id": req.headers["svix-id"],
+            "svix-timestamp": req.headers["svix-timestamp"],
+            "svix-signature": req.headers["svix-signature"]
         })
     } catch (error) {
         return res.status(400).json({ success: false, message: error.message })
