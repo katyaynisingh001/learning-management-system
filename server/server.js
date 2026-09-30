@@ -28,3 +28,10 @@ app.use('/api/educator', express.json(), educatorRouter)
 app.use('/api/course', express.json(), courseRouter)
 
 export default app
+
+if (!process.env.VERCEL) {
+	const PORT = process.env.PORT || 5000
+	app.listen(PORT, () => {
+		console.log(`Server is running on port ${PORT}`)
+	})
+}
