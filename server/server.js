@@ -2,7 +2,7 @@ import express from 'express'
 import cors from 'cors'
 import 'dotenv/config'
 import connectDB from './configs/mongodb.js'
-import { clerkWebhook } from './controllers/webhooks.js'
+import { clerkWebhook, stripeWebhooks } from './controllers/webhooks.js'
 import educatorRouter from './routes/educatorRoutes.js'
 import userRouter from './routes/userRoutes.js'
 import { clerkMiddleware } from '@clerk/express'
@@ -26,6 +26,7 @@ app.post('/clerk', express.raw({ type: 'application/json' }), clerkWebhook)
 app.use('/api/user', express.json(), userRouter)
 app.use('/api/educator', express.json(), educatorRouter)
 app.use('/api/course', express.json(), courseRouter)
+app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks)
 
 export default app
 
