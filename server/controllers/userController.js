@@ -121,3 +121,37 @@ export const getCourseProgress = async(req, res) =>{
         res.json({success:false, message: error.message})
     }
 }
+
+//Add user Rating to Course
+export const addUserRating = async(req, res) =>{
+    const { courseId, rating } = req.body
+    const userId = req.auth.userId
+
+    if(!courseId || !userId || !rating || rating < 1 || rating > 5){
+        return res.json({success:false, message: "Invalid Data"})
+    }
+    try{
+        const course = await Course.findById(courseId)
+
+        if(!course){
+            return res.json({success:false, message: "Course Not Found"})
+        }
+        const user = await User.findById(userId)
+
+        if(!user || !user.enrolledCourses.includes(courseId)){
+            return res.json({success:false, message: "User has not purchased this course"});
+        }
+        const existingRatingIndex = course.courseRatings.findIndex(r => r.userId === userId)
+         if(existingRatingIndex !== -1){
+            course.courseRatings[existingRatingIndex].rating = rating;
+        }else{
+            course.courseRatings.push({ userId, rating });
+        }
+        await course.save();
+
+        res.json({success:true, message: "Rating Added"})
+    } catch(error){
+        res.json({success:false, message: error.message})
+    }
+}
+    
