@@ -28,11 +28,9 @@ app.use('/api/educator', express.json(), educatorRouter)
 app.use('/api/course', express.json(), courseRouter)
 app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks)
 
-export default app
-
-if (!process.env.VERCEL) {
+//Port
 	const PORT = process.env.PORT || 5000
+
 	app.listen(PORT, () => {
 		console.log(`Server is running on port ${PORT}`)
 	})
-}
