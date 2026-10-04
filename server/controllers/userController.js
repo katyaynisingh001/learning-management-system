@@ -109,3 +109,15 @@ export const updateCourseProgress = async(req, res) =>{
         res.json({success:false, message: error.message})
     }
 }
+
+//Get User Course Progress
+export const getCourseProgress = async(req, res) =>{
+    try {
+        const { courseId, lectureId } = req.body
+        const userId = req.auth.userId
+        const progressData = await CourseProgress.findOne({ userId, courseId })
+        res.json({success:true, progressData})
+    } catch (error) {
+        res.json({success:false, message: error.message})
+    }
+}
