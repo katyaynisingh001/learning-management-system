@@ -2,13 +2,45 @@ import User from '../models/User.js'
 import { Purchase } from "../models/Purchase.js";
 import Stripe from "stripe";
 import Course from "../models/Course.js"
-import CourseProgress from '../models/CourseProgress.js'
+import { CourseProgress } from '../models/CourseProgress.js'
+import { clerkClient, getAuth } from '@clerk/express'
+
+export const syncUser = async (req, res) => {
+    try {
+        const userId = getAuth(req).userId
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'No authenticated Clerk user was found. Sign in and confirm the client and server Clerk keys belong to the same instance.'
+            })
+        }
+
+        const clerkUser = await clerkClient.users.getUser(userId)
+        const email = clerkUser.primaryEmailAddress?.emailAddress || clerkUser.emailAddresses[0]?.emailAddress
+
+        if (!email) {
+            return res.status(400).json({ success: false, message: 'Your Clerk account needs an email address.' })
+        }
+
+        const name = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.username || email
+        const user = await User.findByIdAndUpdate(
+            userId,
+            { $set: { name, email, imageUrl: clerkUser.imageUrl } },
+            { new: true, upsert: true }
+        )
+
+        res.json({ success: true, user })
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message })
+    }
+}
 
 
 //get user data
 export const getUserData = async (req, res) => {
     try {
-        const userId = req.auth.userId
+        const userId = getAuth(req).userId
         const user = await User.findById(userId)
 
         if(!user){
@@ -23,7 +55,7 @@ export const getUserData = async (req, res) => {
 //Users Enrolled Courses With Lecture links
 export const userEnrolledCourses = async(req, res) =>{
     try {
-        const userId = req.auth.userId
+        const userId = getAuth(req).userId
         const userData = await User.findById(userId).populate('enrolledCourses')
 
         res.json({success: true, enrolledCourses: userData.enrolledCourses})
@@ -37,7 +69,7 @@ export const purchaseCourse = async()=>{
     try {
         const { courseId } = req.body 
         const { origin } = req.headers
-        const userId = req.auth.userId 
+        const userId = getAuth(req).userId 
         const userData = await User.findById(userId)
         const courseData = await Course.findById(courseId)
 
@@ -88,7 +120,7 @@ export const purchaseCourse = async()=>{
 export const updateUserCourseProgress = async(req, res) =>{
     try {
         const { courseId, lectureId } = req.body
-        const userId = req.auth.userId
+        const userId = getAuth(req).userId
         const courseProgress = await CourseProgress.findOne({ userId, courseId })
 
         if (progressData){
@@ -114,7 +146,7 @@ export const updateUserCourseProgress = async(req, res) =>{
 export const getCourseProgress = async(req, res) =>{
     try {
         const { courseId, lectureId } = req.body
-        const userId = req.auth.userId
+        const userId = getAuth(req).userId
         const progressData = await CourseProgress.findOne({ userId, courseId })
         res.json({success:true, progressData})
     } catch (error) {
@@ -125,7 +157,7 @@ export const getCourseProgress = async(req, res) =>{
 //Add user Rating to Course
 export const addUserRating = async(req, res) =>{
     const { courseId, rating } = req.body
-    const userId = req.auth.userId
+    const userId = getAuth(req).userId
 
     if(!courseId || !userId || !rating || rating < 1 || rating > 5){
         return res.json({success:false, message: "Invalid Data"})

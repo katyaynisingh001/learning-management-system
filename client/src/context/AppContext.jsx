@@ -2,20 +2,20 @@ import { createContext , useState, useEffect } from 'react';
 import { dummyCourses } from '../assets/assets';
 import { useNavigate } from 'react-router-dom';
 import humanizeDuration from 'humanize-duration'
-import { useAuth, useUser } from '@clerk/clerk-react';
+import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 export const AppContext = createContext()
 
 export const AppContextProvider = (props) => {
 
-	const backendUrl = import.meta.env.VITE_BACKEND_URL
+	const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
 
 	const currency = import.meta.env.VITE_CURRENCY 
 	const navigate = useNavigate()
 
 	const {getToken, isLoaded, isSignedIn} = useAuth()
-	const {user} = useUser()
 
 	const [allCourses, setAllCourses] = useState([])
 	const [isEducator, setIsEducator] = useState(true)
@@ -104,7 +104,10 @@ export const AppContextProvider = (props) => {
 		const logToken = async () => {
 			try {
 				const token = await getToken()
-				const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/user/sync`, {
+				if (!token) {
+					throw new Error('Clerk did not provide a session token.')
+				}
+				const response = await fetch(`${backendUrl}/api/user/sync`, {
 					method: 'POST',
 					headers: { Authorization: `Bearer ${token}` },
 				})
@@ -118,7 +121,7 @@ export const AppContextProvider = (props) => {
 		}
 
 		logToken()
-	}, [getToken, isLoaded, isSignedIn])
+	}, [backendUrl, getToken, isLoaded, isSignedIn])
 
 
 	const value = {

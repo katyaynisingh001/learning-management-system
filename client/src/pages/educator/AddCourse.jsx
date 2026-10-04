@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from 'react'
-import uniqid from 'uniqid'
 import Quill from 'quill'
 import { assets } from '../../assets/assets';
 import { useAuth } from '@clerk/clerk-react'
+
+const createId = () => crypto.randomUUID()
 
 const AddCourse = () => {
   const { getToken } = useAuth()
@@ -34,7 +35,7 @@ const AddCourse = () => {
       const title = prompt('Enter chapter name:');
       if (title) {
         const newChapter = {
-          chapterId: uniqid(),
+          chapterId: createId(),
           chapterTitle: title,
           chapterContent: [],
           collapsed: false,
@@ -73,7 +74,7 @@ const addLecture = () => {
       if (chapter.chapterId === currentChapterId) {
         const newLecture = {
           ...lectureDetails, lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
-          lectureId: uniqid(),
+          lectureId: createId(),
         };
         chapter.chapterContent.push(newLecture);
       }
@@ -119,7 +120,7 @@ const handleSubmit = async (e) => {
     formData.append('courseData', JSON.stringify(courseData))
     formData.append('image', image)
 
-    const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/educator/add-course`, {
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/educator/add-course`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData,

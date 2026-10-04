@@ -33,7 +33,7 @@ export const addNewCourse = async (req, res) => {
     try {
         const { courseData } = req.body;
         const imageFile = req.file
-        const educatorId = req.auth.userId
+        const educatorId = getAuth(req).userId
 
         if (!imageFile) {
             return res.json({
@@ -58,7 +58,7 @@ export const addNewCourse = async (req, res) => {
 //Get Educator Courses
 export const getEducatorCourses = async(req, res)=>{
     try {
-        const educator = req.auth.userId
+        const educator = getAuth(req).userId
         const courses = await Course.find({educator})
         res.json({success: true, courses})
     } catch (error) {
@@ -70,7 +70,7 @@ export const getEducatorCourses = async(req, res)=>{
 
 export const educatorDashboardData = async (req, res)=>{
     try {
-        const educator = req.auth.userId;
+        const educator = getAuth(req).userId;
         const courses = await Course.find({educator});
         const totalCourses = courses.map(course => course._id);
 
@@ -111,7 +111,7 @@ res.json({
 //Get enrolled students data with purchase data
 export const getEnrolledStudentsData = async(req, res) => {
     try {
-        const educator = req.auth.userId;
+        const educator = getAuth(req).userId;
         const courses = await Course.find({educator});
         const courseIds = courses.map(course => course._id);
 
