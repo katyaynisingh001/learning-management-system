@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react'
+import { useContext, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { AppContext } from '../../context/AppContext'
 import Loading from '../../components/student/Loading'
@@ -14,23 +14,12 @@ const CourseDetails = () => {
   const { id } = useParams()
   const [courseData, setCourseData] = useState(null)
   const [openSections, setOpenSections] = useState({})
-  const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false)
   const [playerData, setPlayerData] = useState(null)
 
-  const { allCourses, calculateRating, calculateCourseDuration, calculateNoOfLectures, calculateChapterTime, currency, backendUrl , userData ,getToken} = useContext(AppContext)
-
-  const fetchCourseData = async () => {
-    try{
-      const { data } = await axios.get(backendUrl + '/api/course/' + id)
-      if(data.success){
-        setCourseData(data.course)
-      }else{
-        toast.error(data.message)
-      }
-    }catch(error){
-      toast.error(error.message)
-    }
-  }
+  const { calculateRating, calculateCourseDuration, calculateNoOfLectures, calculateChapterTime, currency, backendUrl , userData ,getToken} = useContext(AppContext)
+  const isAlreadyEnrolled = Boolean(userData?.enrolledCourses?.some(
+    course => String(course?._id ?? course) === String(courseData?._id)
+  ))
 
   const enrollCourse = async () => {
     try{
@@ -42,7 +31,7 @@ const CourseDetails = () => {
       }
       const token = await getToken();
 
-      const {data} = await axios.post(backendUrl + '/api/course/purchase', {corseId: courseData._id},{headers: {
+      const {data} = await axios.post(backendUrl + '/api/user/purchase', {courseId: courseData._id},{headers: {
           Authorization: `Bearer ${token}`}})
           if(data.success){
             const {session_url} = data
@@ -56,14 +45,22 @@ const CourseDetails = () => {
   }
 
   useEffect(() => {
-    fetchCourseData()
-  }, [])
+    let cancelled = false
+    axios.get(backendUrl + '/api/course/' + id)
+      .then(({ data }) => {
+        if (cancelled) return
+        if (data.success) {
+          setCourseData(data.courseData)
+        } else {
+          toast.error(data.message)
+        }
+      })
+      .catch(error => {
+        if (!cancelled) toast.error(error.message)
+      })
 
-  useEffect(() => {
-    if(userData && courseData){
-      setIsAlreadyEnrolled(userData.enrolledStudents.includes(courseData._id))
-    }
-  }, [userData, courseData])
+    return () => { cancelled = true }
+  }, [backendUrl, id])
 
   const toggleSection = (index) => {
     setOpenSections((prev) => (

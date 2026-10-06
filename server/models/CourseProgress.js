@@ -13,7 +13,10 @@ const courseProgressSchema = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
-    lectureCompleted: []
+    lectureCompleted: {
+        type: [String],
+        default: [],
+    }
 },{minimize: false});
 
 export const CourseProgress = mongoose.model('CourseProgress', courseProgressSchema)

@@ -1,21 +1,42 @@
 import React, { useContext, useEffect, useState } from 'react'
+import axios from 'axios'
+import { toast } from 'react-toastify'
 import { AppContext } from '../../context/AppContext'
 import Loading from '../../components/student/Loading'
-import { assets } from '../../assets/assets'
 
 const MyCourses = () => {
 
-  const { currency, allCourses } = useContext(AppContext)
+  const { currency, backendUrl, getToken } = useContext(AppContext)
 
   const [courses, setCourses] = useState(null)
 
   const fetchEducatorCourses = async () => {
-    setCourses(allCourses)
+    try {
+      const token = await getToken()
+      const { data } = await axios.get(`${backendUrl}/api/educator/courses`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!data.success) {
+        throw new Error(data.message || 'Unable to load your courses.')
+      }
+
+      setCourses(data.courses.map(course => ({
+        ...course,
+        enrolledStudents: Array.isArray(course.enrolledStudents) ? course.enrolledStudents : []
+      })))
+    } catch (error) {
+      const message = axios.isAxiosError(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error ? error.message : 'Unable to load your courses.'
+      toast.error(message)
+      setCourses([])
+    }
   }
 
   useEffect(() => {
     fetchEducatorCourses()
-  }, [allCourses])
+  }, [])
 
   return courses ? (
   <div className='w-full min-h-full md:p-8 p-4 pt-8'>

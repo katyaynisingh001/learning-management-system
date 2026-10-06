@@ -1,4 +1,4 @@
-import { createContext , useState, useEffect } from 'react';
+import { createContext , useCallback, useState, useEffect } from 'react';
 import { dummyCourses } from '../assets/assets';
 import { useNavigate } from 'react-router-dom';
 import humanizeDuration from 'humanize-duration'
@@ -98,7 +98,7 @@ export const AppContextProvider = (props) => {
 	}
 
 	//Function calculate to No. of Lectures in the course
-	const calculateNoOfLectures = (course)=>{
+	const calculateNoOfLectures = useCallback((course)=>{
 		let totalLectures =0;
 		course.courseContent.forEach(chapter => {
 			if(Array.isArray(chapter.chapterContent)){
@@ -106,10 +106,10 @@ export const AppContextProvider = (props) => {
 			}
 		});
 		return totalLectures;
-	}
+	}, [])
 
 	//Fetch User Enrolled Courses
-	const fetchUserEnrolledCourses = async ()=>{
+	const fetchUserEnrolledCourses = useCallback(async ()=>{
 		try{
 			const token = await getToken();
 			const {data} = await axios.get(backendUrl + '/api/user/enrolled-courses', {
@@ -125,7 +125,7 @@ export const AppContextProvider = (props) => {
 		}catch(error){
 			toast.error(error.message)
 		}
-	}
+	}, [backendUrl, getToken])
 
 	useEffect(() => {
 		fetchAllCourses()

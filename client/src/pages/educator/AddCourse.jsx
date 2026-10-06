@@ -1,12 +1,14 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useContext, useRef, useState, useEffect } from 'react'
 import Quill from 'quill'
+import axios from 'axios'
+import { toast } from 'react-toastify'
 import { assets } from '../../assets/assets';
-import { useAuth } from '@clerk/clerk-react'
-
-const createId = () => crypto.randomUUID()
+import uniqid from 'uniqid'
+import { AppContext } from '../../context/AppContext'
 
 const AddCourse = () => {
-  const { getToken } = useAuth()
+
+  const { backendUrl, getToken } = useContext(AppContext)
 
   const quillRef = useRef(null);
   const editorRef = useRef(null);
@@ -15,6 +17,7 @@ const AddCourse = () => {
   const [coursePrice, setCoursePrice] = useState(0)
   const [discount, setDiscount] = useState(0)
   const [image, setImage] = useState(null)
+  const [useProjectThumbnail, setUseProjectThumbnail] = useState(false)
   const [chapters, setChapters] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -35,7 +38,7 @@ const AddCourse = () => {
       const title = prompt('Enter chapter name:');
       if (title) {
         const newChapter = {
-          chapterId: createId(),
+          chapterId: uniqid(),
           chapterTitle: title,
           chapterContent: [],
           collapsed: false,
@@ -74,7 +77,7 @@ const addLecture = () => {
       if (chapter.chapterId === currentChapterId) {
         const newLecture = {
           ...lectureDetails, lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
-          lectureId: createId(),
+          lectureId: uniqid(),
         };
         chapter.chapterContent.push(newLecture);
       }
@@ -91,17 +94,23 @@ const addLecture = () => {
 };
 
 const handleSubmit = async (e) => {
-  e.preventDefault();
-  setSubmitMessage('')
-  setIsSubmitting(true)
+  e.preventDefault()
+  if (isSubmitting) return
 
-  try {
-    const token = await getToken()
+  setSubmitMessage('')
+  try{
+    if(!image && !useProjectThumbnail){
+      const message = 'Please select a thumbnail image'
+      setSubmitMessage(message)
+      toast.error(message)
+      return
+    }
+    setIsSubmitting(true)
     const courseData = {
       courseTitle,
-      courseDescription: quillRef.current?.root.innerHTML ?? '',
-      coursePrice: Number(coursePrice),
-      discount: Number(discount),
+      courseDescription: quillRef.current.root.innerHTML,
+      coursePrice : Number(coursePrice),
+      discount : Number(discount),
       courseContent: chapters.map((chapter) => ({
         chapterID: chapter.chapterId,
         chapterOrder: Number(chapter.chapterOrder),
@@ -116,25 +125,41 @@ const handleSubmit = async (e) => {
         })),
       })),
     }
+
     const formData = new FormData()
     formData.append('courseData', JSON.stringify(courseData))
-    formData.append('image', image)
-
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'}/api/educator/add-course`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData,
-    })
-    const result = await response.json()
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.message || 'Unable to add course.')
+    if (useProjectThumbnail) {
+      formData.append('courseThumbnailUrl', assets.course_3_thumbnail)
+    } else {
+      formData.append('image', image)
     }
 
-    setSubmitMessage('Course added successfully.')
-  } catch (error) {
-    setSubmitMessage(error.message || 'Unable to add course.')
-  } finally {
+    const token = await getToken()
+    const {data} = await axios.post(backendUrl + '/api/educator/add-course', formData, {headers: {Authorization: `Bearer ${token}`}})
+    if(data.success){
+      const message = data.message || 'Course added successfully.'
+      setSubmitMessage(message)
+      toast.success(message)
+      setCourseTitle('')
+      setCoursePrice(0)
+      setDiscount(0)
+      setImage(null)
+      setUseProjectThumbnail(false)
+      setChapters([])
+      quillRef.current.root.innerHTML = ''
+    }else{
+
+      toast.error(data.message)
+    }
+  }catch(error){
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined
+    const message = (axios.isAxiosError(error) ? error.response?.data?.message : undefined)
+      || (error instanceof Error ? error.message : undefined)
+      || 'Unable to add course.'
+    console.error(`Failed to add course${status ? ` (HTTP ${status})` : ''}: ${message}`)
+    setSubmitMessage(message)
+    toast.error(message)
+  }finally{
     setIsSubmitting(false)
   }
 };
@@ -177,11 +202,28 @@ const handleSubmit = async (e) => {
               <p>Course Thumbnail</p>
               <label htmlFor="thumbnailImage" className='flex items-center gap-3'>
                 <img src={assets.file_upload_icon} alt="" className='p-3 bg-blue-500 rounded' />
-                <input type="file" id="thumbnailImage" onChange={e => setImage(e.target.files[0])} accept='image/*' hidden />
+                <input type="file" id="thumbnailImage" onChange={e => {
+                  setImage(e.target.files[0] || null)
+                  setUseProjectThumbnail(false)
+                }} accept='image/*' hidden />
                 {image && <img className='max-h-10' src={URL.createObjectURL(image)} alt="" />}
               </label>
             </div>
           </div>
+          <label className='flex items-center gap-2'>
+            <input
+              type='checkbox'
+              checked={useProjectThumbnail}
+              onChange={e => {
+                setUseProjectThumbnail(e.target.checked)
+                if (e.target.checked) setImage(null)
+              }}
+            />
+            Use the existing course_3.png thumbnail (avoids Cloudinary upload)
+          </label>
+          {useProjectThumbnail && (
+            <img className='max-h-24 w-fit rounded' src={assets.course_3_thumbnail} alt='Selected course thumbnail' />
+          )}
 
           <div className='flex flex-col gap-1'>
             <p>Discount %</p>
@@ -246,7 +288,7 @@ const handleSubmit = async (e) => {
                   </div>
 
                   <div className="mb-2">
-                    <p>Duration (minsutes)</p>
+                    <p>Duration (minutes)</p>
                     <input
                       type="text" className='mt-1 block w-full border rounded py-1 px-2' value={lectureDetails.lectureDuration} onChange={(e) => setLectureDetails({ ...lectureDetails, lectureDuration: e.target.value })} />
                   </div>

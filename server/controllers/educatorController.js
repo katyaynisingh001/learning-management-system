@@ -33,24 +33,74 @@ export const addNewCourse = async (req, res) => {
     try {
         const { courseData } = req.body;
         const imageFile = req.file
+        const { courseThumbnailUrl } = req.body
         const educatorId = getAuth(req).userId
 
-        if (!imageFile) {
-            return res.json({
+        if (!imageFile && !courseThumbnailUrl) {
+            return res.status(400).json({
                 success: false,
                 message: 'Please upload a course thumbnail.'
             })
         }
 
-        const parsedCourseData = await JSON.parse(courseData)
+        let parsedCourseData
+        try {
+            parsedCourseData = JSON.parse(courseData)
+        } catch {
+            return res.status(400).json({
+                success: false,
+                message: 'Course data is invalid.'
+            })
+        }
+
         parsedCourseData.educator = educatorId
-        const imageUpload = await cloudinary.uploader.upload(imageFile.path)
-        parsedCourseData.courseThumbnail = imageUpload.secure_url
+        if (!imageFile) {
+            if (typeof courseThumbnailUrl !== 'string' ||
+                !/^\/(?:assets|src\/assets)\/[^/\\]+$/.test(courseThumbnailUrl)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Course thumbnail path is invalid.'
+                })
+            }
+
+            parsedCourseData.courseThumbnail = courseThumbnailUrl
+        }
+
+        let imageUpload
+        if (imageFile) {
+            try {
+                imageUpload = await cloudinary.uploader.upload(imageFile.path)
+            } catch (error) {
+                const cloudinaryError = error?.error || error
+                const uploadErrorMessage = cloudinaryError?.message || error?.message || 'Unknown Cloudinary error.'
+                const uploadErrorCode = cloudinaryError?.http_code || error?.http_code
+                console.error('Cloudinary course thumbnail upload failed:', {
+                    name: cloudinaryError?.name || error?.name,
+                    httpCode: uploadErrorCode,
+                    requestId: cloudinaryError?.request_id || error?.request_id,
+                    message: uploadErrorMessage
+                })
+                const message = uploadErrorCode === 403
+                    ? 'Cloudinary denied the thumbnail upload (403). Use the existing project thumbnail or verify the Cloudinary account upload permissions.'
+                    : `Thumbnail upload failed: ${uploadErrorMessage}`
+                return res.status(502).json({
+                    success: false,
+                    message
+                })
+            }
+
+            parsedCourseData.courseThumbnail = imageUpload.secure_url
+        }
+
         const newCourse = await Course.create(parsedCourseData)
 
         res.status(201).json({ success: true, course: newCourse })
 
     } catch (error) {
+        console.error('Failed to add course:', error.message)
+        if (error.name === 'ValidationError') {
+            return res.status(400).json({ success: false, message: error.message })
+        }
         res.status(500).json({ success: false, message: error.message })
     }
 }
@@ -60,9 +110,15 @@ export const getEducatorCourses = async(req, res)=>{
     try {
         const educator = getAuth(req).userId
         const courses = await Course.find({educator})
-        res.json({success: true, courses})
+            .select('courseTitle courseThumbnail coursePrice discount enrolledStudents createdAt')
+        const coursesWithEnrollmentCounts = courses.map(course => ({
+            ...course.toObject(),
+            enrolledStudents: course.enrolledStudents || []
+        }))
+        res.json({success: true, courses: coursesWithEnrollmentCounts})
     } catch (error) {
-        res.json({success: false, message: error.message})
+        console.error('Failed to load educator courses:', error.message)
+        res.status(500).json({success: false, message: error.message})
     }
 }
 

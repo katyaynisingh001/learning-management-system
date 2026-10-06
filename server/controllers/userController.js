@@ -65,16 +65,23 @@ export const userEnrolledCourses = async(req, res) =>{
 }
 
 //Purchase Course
-export const purchaseCourse = async()=>{
+export const purchaseCourse = async(req, res)=>{
     try {
-        const { courseId } = req.body 
-        const { origin } = req.headers
-        const userId = getAuth(req).userId 
+        const { courseId } = req.body
+        const origin = req.get('origin')
+        const userId = getAuth(req).userId
+        if (!userId || !courseId || !origin) {
+            return res.status(400).json({success: false, message: 'Course, sign-in, or checkout origin is missing.'})
+        }
+
         const userData = await User.findById(userId)
         const courseData = await Course.findById(courseId)
 
         if(!userData || !courseData){
-            return res.json({success:false, message: 'Data Not Found'})
+            return res.status(404).json({success:false, message: 'User or course was not found.'})
+        }
+        if (userData.enrolledCourses.some(enrolledCourseId => String(enrolledCourseId) === String(courseData._id))) {
+            return res.status(409).json({success: false, message: 'You are already enrolled in this course.'})
         }
 
         const purchaseData = {
@@ -95,24 +102,67 @@ export const purchaseCourse = async()=>{
                 product_data:{
                     name: courseData.courseTitle
                 },
-                unit_amount: Math.floor(newPurchase.amount) * 100
+                unit_amount: Math.round(Number(newPurchase.amount) * 100)
             },
             quantity: 1
         }]
 
         const session = await stripeInstance.checkout.sessions.create({
-            success_url: `${origin}/loading/my-enrollments`,
-            cancel_url: `${origin}`,
+            success_url: `${origin}/my-enrollments?session_id={CHECKOUT_SESSION_ID}`,
+            cancel_url: `${origin}/course/${courseData._id}`,
             line_items: line_items,
             mode: 'payment',
             metadata: {
                 purchaseId: newPurchase._id.toString()
             }
         })
-        res.json({success:true, session_url: session_url})
+        res.json({success:true, session_url: session.url})
 
     } catch (error) {
-        res.json({success:false, message: error.message});
+        console.error('Failed to create course checkout session:', error.message)
+        res.status(500).json({success:false, message: error.message});
+    }
+}
+
+// Confirm a completed Checkout Session and grant course access.
+export const confirmCoursePurchase = async(req, res) => {
+    try {
+        const { sessionId } = req.body
+        const userId = getAuth(req).userId
+        if (!userId || !sessionId) {
+            return res.status(400).json({success: false, message: 'A signed-in user and checkout session are required.'})
+        }
+
+        const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
+        const session = await stripeInstance.checkout.sessions.retrieve(sessionId)
+        if (session.payment_status !== 'paid') {
+            return res.status(409).json({success: false, message: 'Payment has not been completed.'})
+        }
+
+        const purchaseId = session.metadata?.purchaseId
+        const purchase = purchaseId ? await Purchase.findById(purchaseId) : null
+        if (!purchase || purchase.userId !== userId) {
+            return res.status(404).json({success: false, message: 'The completed purchase could not be found for this account.'})
+        }
+
+        const [course, user] = await Promise.all([
+            Course.findById(purchase.courseId),
+            User.findById(userId)
+        ])
+        if (!course || !user) {
+            return res.status(404).json({success: false, message: 'The course or user record could not be found.'})
+        }
+
+        await Promise.all([
+            Course.updateOne({ _id: course._id }, { $addToSet: { enrolledStudents: userId } }),
+            User.updateOne({ _id: userId }, { $addToSet: { enrolledCourses: course._id } }),
+            Purchase.updateOne({ _id: purchase._id }, { $set: { status: 'completed' } })
+        ])
+
+        res.json({success: true, message: 'Course enrollment confirmed.'})
+    } catch (error) {
+        console.error('Failed to confirm course purchase:', error.message)
+        res.status(500).json({success: false, message: error.message})
     }
 }
 
@@ -121,36 +171,55 @@ export const updateUserCourseProgress = async(req, res) =>{
     try {
         const { courseId, lectureId } = req.body
         const userId = getAuth(req).userId
-        const courseProgress = await CourseProgress.findOne({ userId, courseId })
-
-        if (progressData){
-            if(progressData.lectureCompleted.includes(lectureId)){
-                return res.json({success:false, message: "Lecture Already Completed"})
-            }
-            progressData.lectureCompleted.push(lectureId)
-            await progressData.save()
-        }else{
-            await CourseProgress.create({ 
-                userId,
-                courseId,
-                lectureCompleted: [lectureId] 
-            })
+        if (!courseId || !lectureId) {
+            return res.status(400).json({success: false, message: 'Course and lecture are required.'})
         }
+
+        const [user, course] = await Promise.all([
+            User.findById(userId),
+            Course.findById(courseId)
+        ])
+        if (!user?.enrolledCourses.some(enrolledCourseId => String(enrolledCourseId) === String(courseId))) {
+            return res.status(403).json({success: false, message: 'You must be enrolled to update course progress.'})
+        }
+        const lectureExists = course?.courseContent.some(chapter =>
+            chapter.chapterContent.some(lecture => lecture.lectureID === lectureId)
+        )
+        if (!lectureExists) {
+            return res.status(404).json({success: false, message: 'Lecture was not found in this course.'})
+        }
+
+        await CourseProgress.findOneAndUpdate(
+            { userId, courseId: String(courseId) },
+            { $addToSet: { lectureCompleted: String(lectureId) } },
+            { new: true, upsert: true, setDefaultsOnInsert: true }
+        )
         res.json({success:true, message: "Course Progress Updated"})
     } catch (error) {
-        res.json({success:false, message: error.message})
+        console.error('Failed to update course progress:', error.message)
+        res.status(500).json({success:false, message: error.message})
     }
 }
 
 //Get User Course Progress
 export const getCourseProgress = async(req, res) =>{
     try {
-        const { courseId, lectureId } = req.body
+        const { courseId } = req.body
         const userId = getAuth(req).userId
-        const progressData = await CourseProgress.findOne({ userId, courseId })
+        if (!courseId) {
+            return res.status(400).json({success: false, message: 'Course is required.'})
+        }
+
+        const user = await User.findById(userId)
+        if (!user?.enrolledCourses.some(enrolledCourseId => String(enrolledCourseId) === String(courseId))) {
+            return res.status(403).json({success: false, message: 'You must be enrolled to view course progress.'})
+        }
+
+        const progressData = await CourseProgress.findOne({ userId, courseId: String(courseId) })
         res.json({success:true, progressData})
     } catch (error) {
-        res.json({success:false, message: error.message})
+        console.error('Failed to get course progress:', error.message)
+        res.status(500).json({success:false, message: error.message})
     }
 }
 
