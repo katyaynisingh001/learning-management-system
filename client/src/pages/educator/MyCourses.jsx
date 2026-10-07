@@ -6,7 +6,7 @@ import Loading from '../../components/student/Loading'
 
 const MyCourses = () => {
 
-  const { currency, backendUrl, getToken } = useContext(AppContext)
+  const { currency, backendUrl,isEducator, getToken } = useContext(AppContext)
 
   const [courses, setCourses] = useState(null)
 
@@ -17,26 +17,18 @@ const MyCourses = () => {
         headers: { Authorization: `Bearer ${token}` }
       })
 
-      if (!data.success) {
-        throw new Error(data.message || 'Unable to load your courses.')
-      }
+      data.success && setCourses(data.courses)
 
-      setCourses(data.courses.map(course => ({
-        ...course,
-        enrolledStudents: Array.isArray(course.enrolledStudents) ? course.enrolledStudents : []
-      })))
     } catch (error) {
-      const message = axios.isAxiosError(error)
-        ? error.response?.data?.message || error.message
-        : error instanceof Error ? error.message : 'Unable to load your courses.'
-      toast.error(message)
-      setCourses([])
+      toast.error(error.message)
     }
   }
 
   useEffect(() => {
-    fetchEducatorCourses()
-  }, [])
+    if (isEducator) {
+      fetchEducatorCourses()
+    }
+  }, [isEducator])
 
   return courses ? (
   <div className='w-full min-h-full md:p-8 p-4 pt-8'>
