@@ -174,15 +174,18 @@ export const getEnrolledStudentsData = async(req, res) => {
         const purchases = await Purchase.find({
             courseId: {$in: courseIds},
             status: 'completed'
-        }).purchase('userId', 'name imageUrl').populate('courseId', 'courseITitle')
+        })
+            .populate('userId', 'name imageUrl')
+            .populate('courseId', 'courseTitle')
 
         const enrolledStudents = purchases.map(purchase => ({
-            student: purchase.userIds,
+            student: purchase.userId,
             courseTitle: purchase.courseId.courseTitle,
-            purchaseData: purchase.createdAt
+            purchaseDate: purchase.createdAt
         }));
         res.json({success: true, enrolledStudents})
     } catch (error) {
-        res.json({success: false, message: error.message});
+        console.error('Failed to load enrolled students:', error.message)
+        res.status(500).json({success: false, message: error.message});
     }
 }

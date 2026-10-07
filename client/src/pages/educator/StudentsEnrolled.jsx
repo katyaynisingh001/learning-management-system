@@ -1,18 +1,38 @@
-import React, { useEffect, useState } from 'react'
-import { dummyStudentEnrolled } from '../../assets/assets'
+import { useContext, useEffect, useState } from 'react'
+import axios from 'axios'
+import { toast } from 'react-toastify'
+import { AppContext } from '../../context/AppContext'
 import Loading from '../../components/student/Loading'
 
 const StudentsEnrolled = () => {
 
+  const {backendUrl, getToken, isEducator} = useContext(AppContext)
   const [enrolledStudents, setEnrolledStudents] = useState(null)
 
-  const fetchEnrolledStudents = async () => {
-    setEnrolledStudents(dummyStudentEnrolled)
-  }
-
   useEffect(() => {
-    fetchEnrolledStudents()
-  }, [])
+    if (!isEducator) return
+
+    let cancelled = false
+    const loadEnrolledStudents = async () => {
+      try {
+        const token = await getToken()
+        const { data } = await axios.get(`${backendUrl}/api/educator/enrolled-students`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (!data.success) {
+          throw new Error(data.message || 'Unable to load enrolled students.')
+        }
+        if (!cancelled) setEnrolledStudents(data.enrolledStudents.slice().reverse())
+      } catch (error) {
+        if (cancelled) return
+        toast.error(error instanceof Error ? error.message : 'Unable to load enrolled students.')
+        setEnrolledStudents([])
+      }
+    }
+
+    loadEnrolledStudents()
+    return () => { cancelled = true }
+  }, [backendUrl, getToken, isEducator])
 
   return enrolledStudents ? (
     <div className='min-h-screen flex flex-col items-start justify-between md:p-8 md:pb-0 p-4 pt-8 pb-0'>
