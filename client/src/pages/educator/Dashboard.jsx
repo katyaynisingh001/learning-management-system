@@ -17,6 +17,10 @@ const Dashboard = () => {
     const loadDashboardData = async () => {
       try {
         const token = await getToken()
+        if (!token) {
+          throw new Error('Your sign-in session has expired. Please sign in again.')
+        }
+
         const { data } = await axios.get(`${backendUrl}/api/educator/dashboard`, {
           headers: { Authorization: `Bearer ${token}` }
         })
