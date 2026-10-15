@@ -3,7 +3,6 @@ import Quill from 'quill'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { assets } from '../../assets/assets';
-import uniqid from 'uniqid'
 import { AppContext } from '../../context/AppContext'
 
 const AddCourse = () => {
@@ -38,7 +37,7 @@ const AddCourse = () => {
       const title = prompt('Enter chapter name:');
       if (title) {
         const newChapter = {
-          chapterId: uniqid(),
+          chapterId: crypto.randomUUID(),
           chapterTitle: title,
           chapterContent: [],
           collapsed: false,
@@ -77,7 +76,7 @@ const addLecture = () => {
       if (chapter.chapterId === currentChapterId) {
         const newLecture = {
           ...lectureDetails, lectureOrder: chapter.chapterContent.length > 0 ? chapter.chapterContent.slice(-1)[0].lectureOrder + 1 : 1,
-          lectureId: uniqid(),
+          lectureId: crypto.randomUUID(),
         };
         chapter.chapterContent.push(newLecture);
       }
