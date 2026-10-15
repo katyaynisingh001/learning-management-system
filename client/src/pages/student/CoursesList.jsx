@@ -1,4 +1,5 @@
-import React, { useEffect, useState} from 'react'
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useEffect, useState } from 'react'
 import { useContext } from 'react'
 import { AppContext } from '../../context/AppContext'
 import SearchBar from '../../components/student/SearchBar'

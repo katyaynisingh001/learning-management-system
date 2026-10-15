@@ -1,5 +1,6 @@
+/* eslint-disable react-refresh/only-export-components */
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/exhaustive-deps */
 import { createContext , useCallback, useState, useEffect } from 'react';
-import { dummyCourses } from '../assets/assets';
 import { useNavigate } from 'react-router-dom';
 import humanizeDuration from 'humanize-duration'
 import { useAuth, useUser } from '@clerk/clerk-react';
@@ -15,7 +16,7 @@ export const AppContextProvider = (props) => {
 	const currency = import.meta.env.VITE_CURRENCY 
 	const navigate = useNavigate()
 
-	const {getToken, isLoaded, isSignedIn} = useAuth()
+	const {getToken} = useAuth()
 	const {user} = useUser()
 
 	const [allCourses, setAllCourses] = useState([])

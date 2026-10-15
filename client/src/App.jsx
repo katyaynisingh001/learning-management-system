@@ -1,4 +1,3 @@
-import React from 'react'
 import { Route, Routes , useMatch} from 'react-router-dom'
 import AddCourse from './pages/educator/AddCourse'
 import Dashboard from './pages/educator/Dashboard'
@@ -13,7 +12,7 @@ import Player from './pages/student/Player'
 import Loading from './components/student/Loading'
 import Navbar from './components/student/Navbar'
 import "quill/dist/quill.snow.css";
-import { ToastContainer, toast } from 'react-toastify';
+import { ToastContainer } from 'react-toastify';
 
 const App = () => {
 
