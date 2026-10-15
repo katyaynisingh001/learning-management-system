@@ -140,29 +140,27 @@ export const educatorDashboardData = async (req, res)=>{
         
         const totalEarnings = purchases.reduce((sum, purchase)=> sum + purchase.amount, 0);
 
-        // Collect unique enrolled student IDs with their course titles
-const enrolledStudentsData = [];
+        const studentIds = [...new Set(courses.flatMap(course => course.enrolledStudents))];
+        const students = await User.find({
+            _id: { $in: studentIds }
+        }, 'name imageUrl');
+        const studentsById = new Map(students.map(student => [student._id, student]));
+        const enrolledStudentsData = courses.flatMap(course =>
+            course.enrolledStudents.flatMap(studentId => {
+                const student = studentsById.get(studentId);
+                return student ? [{ courseTitle: course.courseTitle, student }] : [];
+            })
+        );
 
-for (const course of courses) {
-    const students = await User.find({
-        _id: { $in: course.enrolledStudents }
-    }, 'name imageUrl');
-
-    students.forEach(student => {
-        enrolledStudentsData.push({
-            courseTitle: course.courseTitle,
-            student
+        res.json({
+            success: true,
+            dashboardData: {
+                totalEarnings, enrolledStudentsData, totalCourses
+            }
         });
-    });
-}
-res.json({
-    success: true,
-    dashboardData: {
-        totalEarnings, enrolledStudentsData, totalCourses
-    }
-})
     } catch (error) {
-        res.json({success: false, message: error.message});
+        console.error('Failed to load educator dashboard:', error.message);
+        res.status(500).json({success: false, message: error.message});
     }
 }
 
@@ -180,11 +178,15 @@ export const getEnrolledStudentsData = async(req, res) => {
             .populate('userId', 'name imageUrl')
             .populate('courseId', 'courseTitle')
 
-        const enrolledStudents = purchases.map(purchase => ({
-            student: purchase.userId,
-            courseTitle: purchase.courseId.courseTitle,
-            purchaseDate: purchase.createdAt
-        }));
+        const enrolledStudents = purchases.flatMap(purchase =>
+            purchase.userId && purchase.courseId
+                ? [{
+                    student: purchase.userId,
+                    courseTitle: purchase.courseId.courseTitle,
+                    purchaseDate: purchase.createdAt
+                }]
+                : []
+        );
         res.json({success: true, enrolledStudents})
     } catch (error) {
         console.error('Failed to load enrolled students:', error.message)
