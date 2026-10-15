@@ -8,6 +8,7 @@ import humanizeDuration from 'humanize-duration'
 import YouTube from 'react-youtube'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { getYouTubeVideoId } from '../../utils/getYouTubeVideoId'
 
 
 const CourseDetails = () => {
@@ -124,7 +125,7 @@ const CourseDetails = () => {
                             <div className='flex gap-2'>
                               {lecture.isPreviewFree && <p
                                 onClick={() => setPlayerData({
-                                  videoId: lecture.lectureUrl.split('/').pop()
+                                  videoId: getYouTubeVideoId(lecture.lectureUrl)
                                 })}
                                 className='text-blue-500 cursor-pointer'>Preview</p>}
                               <p>{humanizeDuration(lecture.lectureDuration * 60 * 1000, { units: ['h', 'm'] })}</p>

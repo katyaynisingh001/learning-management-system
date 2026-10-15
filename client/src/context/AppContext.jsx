@@ -45,9 +45,7 @@ export const AppContextProvider = (props) => {
     //Fetch user data
 	const fetchUserData = async () => {
 
-		if(user.publicMetadata.role === 'educator'){
-			setIsEducator(true)
-		}
+		setIsEducator(user?.publicMetadata?.role === 'educator')
 
 		try{
 			const token = await getToken();
@@ -132,12 +130,16 @@ export const AppContextProvider = (props) => {
 		fetchAllCourses()
 	}, [])
 
-		useEffect(() => {
-			if(user){
-				fetchUserData()
-				fetchUserEnrolledCourses()
-			}
-		}, [user])
+	useEffect(() => {
+		if (user) {
+			fetchUserData()
+			fetchUserEnrolledCourses()
+		} else {
+			setIsEducator(false)
+			setUserData(null)
+			setEnrolledCourses([])
+		}
+	}, [user])
 
 
 	const value = {

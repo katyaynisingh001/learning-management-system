@@ -48,7 +48,8 @@ export const getUserData = async (req, res) => {
         }
         res.json({success:true, user})
     }catch(error){
-        req.json({success:false, message: error.message})
+        console.error('Failed to load user data:', error.message)
+        res.status(500).json({success:false, message: error.message})
     }
 }
 
@@ -58,9 +59,14 @@ export const userEnrolledCourses = async(req, res) =>{
         const userId = getAuth(req).userId
         const userData = await User.findById(userId).populate('enrolledCourses')
 
+        if (!userData) {
+            return res.status(404).json({success: false, message: 'User was not found.'})
+        }
+
         res.json({success: true, enrolledCourses: userData.enrolledCourses})
     } catch (error) {
-        res.json({success:false, message:error.message})
+        console.error('Failed to load enrolled courses:', error.message)
+        res.status(500).json({success:false, message:error.message})
     }
 }
 
@@ -93,7 +99,10 @@ export const purchaseCourse = async(req, res)=>{
         //Stripe Gateway Initialize
         const stripeInstance = new Stripe(process.env.STRIPE_SECRET_KEY)
 
-        const currency = process.env.CURRENCY.toLocaleLowerCase()
+        const currency = process.env.CURRENCY?.toLowerCase()
+        if (!currency) {
+            throw new Error('CURRENCY is not configured.')
+        }
 
         //Creating line items to for Stripe
         const line_items = [{
@@ -228,19 +237,19 @@ export const addUserRating = async(req, res) =>{
     const { courseId, rating } = req.body
     const userId = getAuth(req).userId
 
-    if(!courseId || !userId || !rating || rating < 1 || rating > 5){
-        return res.json({success:false, message: "Invalid Data"})
+    if(!courseId || !userId || !Number.isInteger(rating) || rating < 1 || rating > 5){
+        return res.status(400).json({success:false, message: "Rating must be an integer from 1 to 5."})
     }
     try{
         const course = await Course.findById(courseId)
 
         if(!course){
-            return res.json({success:false, message: "Course Not Found"})
+            return res.status(404).json({success:false, message: "Course Not Found"})
         }
         const user = await User.findById(userId)
 
-        if(!user || !user.enrolledCourses.includes(courseId)){
-            return res.json({success:false, message: "User has not purchased this course"});
+        if(!user || !user.enrolledCourses.some(enrolledCourseId => String(enrolledCourseId) === String(courseId))){
+            return res.status(403).json({success:false, message: "User has not purchased this course"});
         }
         const existingRatingIndex = course.courseRatings.findIndex(r => r.userId === userId)
          if(existingRatingIndex !== -1){
@@ -252,7 +261,8 @@ export const addUserRating = async(req, res) =>{
 
         res.json({success:true, message: "Rating Added"})
     } catch(error){
-        res.json({success:false, message: error.message})
+        console.error('Failed to add course rating:', error.message)
+        res.status(500).json({success:false, message: error.message})
     }
 }
     

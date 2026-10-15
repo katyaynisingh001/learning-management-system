@@ -1,7 +1,10 @@
 import express from 'express'
+import { requireAuth } from '@clerk/express'
 import { addUserRating, confirmCoursePurchase, getUserData, userEnrolledCourses, purchaseCourse, updateUserCourseProgress, getCourseProgress, syncUser } from '../controllers/userController.js'
 
 const userRouter = express.Router()
+
+userRouter.use(requireAuth())
 
 userRouter.post('/sync', syncUser)
 userRouter.get('/data', getUserData)

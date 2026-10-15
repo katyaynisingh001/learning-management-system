@@ -7,7 +7,8 @@ export const getAllCourses = async(req, res)=>{
 
         res.json({success: true, courses})
     } catch (error) {
-        res.json({success: false, message: error.message})
+        console.error('Failed to load courses:', error.message)
+        res.status(500).json({success: false, message: error.message})
     }
 }
 //Get course by id
@@ -16,6 +17,10 @@ export const getCourseId = async (req, res)=>{
 
     try{
         const courseData = await Course.findById(id).populate({path: 'educator'})
+
+        if (!courseData) {
+            return res.status(404).json({success: false, message: 'Course was not found.'})
+        }
 
         //Remove lectureUrl if isPreviewFree is false
         courseData.courseContent.forEach(chapter => {
@@ -27,7 +32,7 @@ export const getCourseId = async (req, res)=>{
         })
         res.json({success: true, courseData})
     }catch(error){
-        res.json({success: false, message: error.message})
+        console.error('Failed to load course:', error.message)
+        res.status(500).json({success: false, message: error.message})
     }
 }
-

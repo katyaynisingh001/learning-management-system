@@ -10,6 +10,7 @@ import YouTube from 'react-youtube'
 import Footer from '../../components/student/Footer'
 import Rating from '../../components/student/Rating'
 import Loading from '../../components/student/Loading'
+import { getYouTubeVideoId } from '../../utils/getYouTubeVideoId'
 
 const Player = () => {
   
@@ -139,7 +140,7 @@ const Player = () => {
         <div className='md:mt-10'>
           {playerData ? (
             <div>
-              <YouTube videoId={playerData.lectureUrl.split('/').pop()} iframeClassName='w-full aspect-video' />
+              <YouTube videoId={getYouTubeVideoId(playerData.lectureUrl)} iframeClassName='w-full aspect-video' />
               <div className='flex justify-between items-center mt-1'>
                 <p>{playerData.chapter}.{playerData.lecture} {playerData.lectureTitle}</p>
                 <button onClick={() => markLectureAsComplete(playerData.lectureID)} className='text-blue-600'>
